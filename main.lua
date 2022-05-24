@@ -5,7 +5,8 @@ local gcshared = ngx.shared.gocache
 
 local accepted_request_content_types = {
     "application/json",
-    "application/x-www-form-urlencoded"
+    "application/x-www-form-urlencoded",
+    "text/plain"
 }
 
 local accepted_response_content_types = {
@@ -67,7 +68,7 @@ function _M.log()
 
       local body_data
       for _, ct in ipairs(accepted_request_content_types) do
-          if content_type:match(ct) then
+          if req_content_type:match(ct) then
               local raw_body_data = ngx.req.get_body_data()
               if raw_body_data ~= nil and #raw_body_data < inventory_max_body_size then
                   local success, jsonData = pcall(cjson.decode, raw_body_data) 
