@@ -2,10 +2,11 @@ local cjson = require("cjson")
 local ngx = ngx
 local gcshared = ngx.shared.gocache
 
+local inventory_max_body_size = 2048
 
 local accepted_request_content_types = {
     "application/json",
-    "application/x-www-form-urlencoded",
+    "application/x%-www%-form%-urlencoded",
     "text/plain"
 }
 
@@ -16,11 +17,11 @@ local accepted_response_content_types = {
 }
 
 local ignore_headers = {
+   "host",
    "cookie",
-   "content-length",
+   "user-agent",
    "content-type",
-   "date",
-   "server",
+   "content-lenght",
 }
 local _M = {}
 
