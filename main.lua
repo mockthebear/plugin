@@ -17,12 +17,13 @@ local accepted_response_content_types = {
 }
 
 local ignore_headers = {
-   "host",
-   "cookie",
-   "user-agent",
-   "content-type",
-   "content-lenght",
+   ["host"]                = false,
+   ["cookie"]              = false,
+   ["user-agent"]          = false,
+   ["content-type"]        = false,
+   ["content-lenght"]      = false,
 }
+
 local _M = {}
 
 local function obfuscate_headers(params)
@@ -66,6 +67,12 @@ local function obfuscate_parameters(params)
    check_type["number"] = function()
        return 0
    end
+
+   if not check_type[type(params)] then 
+      ngx.log(ngx.ERR, "Invalid type: "..type(params))
+      return cjson.null
+   end
+
    return check_type[type(params)]()
 end
 
@@ -109,7 +116,7 @@ function _M.log()
           end
       end
       local body_info
-      
+
       if body_data ~= nil then
           local obfuscated_body_data = obfuscate_parameters(body_data)
           body_info = cjson.encode(obfuscated_body_data)
