@@ -1,6 +1,7 @@
 local cjson = require("cjson")
+local http = require("resty.http")
 local ngx = ngx
---local gcshared = ngx.shared.gocache
+local gcshared = ngx.shared.gocache
 
 local inventory_max_body_size = 2048
 
@@ -26,6 +27,41 @@ local ignore_headers = {
 
 local _M = {}
 
+
+local function send_api_discovery_request(request_info)
+   local httpc = http.new()
+
+   local ok,err = httpc:connect("129.159.62.11", 443)
+   if not ok then
+       err = err or ""
+       ngx.log(ngx.ERR,"Error while connecting to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
+       return
+   end
+
+   local ok, err = httpc:ssl_handshake(nil,"api-inventory.gocache.com.br",false)
+   if not ok then
+       err = err or ""
+       ngx.log(ngx.ERR,"Error while doing ssl handshake to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
+       return
+   end
+
+   local ok,err = httpc:request({
+       path = "/discover/push",
+       method = "POST",
+       body = cjson.encode(request_info),
+       headers = {
+           ["Content-Type"] = "application/json",
+       }
+   })
+
+   if not ok then
+       err = err or ""
+       ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
+       return
+   end                
+                       
+end
+
 local function collect_cookie(collector, content)
    content = content .. ';'
    for segment in content:gmatch("(.-);") do 
@@ -38,15 +74,15 @@ end
 
 local function obfuscate_cookies(params)
    local final_cookies = {}
-   for key, content in pairs(params) do 
-      if type(content) == 'table' then 
-         for __, data in pairs(content) do 
-            collect_cookie(final_cookies,  data)
-         end
-      else 
-         collect_cookie(final_cookies, content)
+
+   if type(params) == 'table' then 
+      for __, data in pairs(params) do 
+         collect_cookie(final_cookies,  data)
       end
+   else 
+      collect_cookie(final_cookies, params)
    end
+ 
    return final_cookies
 end
 
@@ -159,6 +195,26 @@ function _M.log()
 
 
       ngx.log(ngx.ERR, "Request data: "..cjson.encode(request_info))
+
+
+      gcshared:lpush("requests", cjson.encode(request_info))
+
+      if gcshared:llen("requests") > 5 then 
+         local content = {}
+         for i=1, 5 do 
+            local reqInfo = gcshared:rpop("requests")
+            if reqInfo then 
+               local reqData = cjson.decode(reqInfo)
+               content[#req] = reqData
+            end
+         end
+         if #content > 0 then 
+            send_api_discovery_request(content)
+         end
+      end
+
+
+
    end
 
 
