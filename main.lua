@@ -108,7 +108,8 @@ function _M.log()
               end
           end
       end
-
+      local body_info
+      
       if body_data ~= nil then
           local obfuscated_body_data = obfuscate_parameters(body_data)
           body_info = cjson.encode(obfuscated_body_data)
