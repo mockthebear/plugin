@@ -1,6 +1,6 @@
 local cjson = require("cjson")
 local ngx = ngx
-local gcshared = ngx.shared.gocache
+--local gcshared = ngx.shared.gocache
 
 local inventory_max_body_size = 2048
 
@@ -26,9 +26,35 @@ local ignore_headers = {
 
 local _M = {}
 
+local function collect_cookie(collector, content)
+   content = content .. ';'
+   for segment in content:gmatch("(.-);") do 
+      local name = segment:match("[%s%t]*(.-)=.+")
+      if name then
+         collector[name] = ""
+      end
+   end
+end
+
+local function obfuscate_cookies(params)
+   local final_cookies = {}
+   for key, content in pairs(params) do 
+      if type(content) == 'table' then 
+         for __, data in pairs(content) do 
+            collect_cookie(final_cookies,  data)
+         end
+      else 
+         collect_cookie(final_cookies, content)
+      end
+   end
+   return final_cookies
+end
+
+
 local function obfuscate_headers(params)
    local final_headers = {}
    for key, content in pairs(params) do 
+      ngx.log(ngx.ERR, "Add is: "..cjson.encode(key).." - "..cjson.encode(content))
       if not ignore_headers[key] then
          if type(content) == 'table' then 
             for __, ___ in pairs(content) do 
@@ -61,16 +87,11 @@ local function obfuscate_parameters(params)
    check_type["string"] = function()
        return ""
    end
-   check_type["bool"] = function()
+   check_type["boolean"] = function()
        return false
    end
    check_type["number"] = function()
        return 0
-   end
-
-   if not check_type[type(params)] then 
-      ngx.log(ngx.ERR, "Invalid type: "..type(params))
-      return cjson.null
    end
 
    return check_type[type(params)]()
@@ -103,8 +124,6 @@ function _M.log()
               local raw_body_data = ngx.req.get_body_data()
               if raw_body_data ~= nil and #raw_body_data < inventory_max_body_size then
 
-                  ngx.log(ngx.ERR, "RAW BODY: "..cjson.encode(raw_body_data))
-
                   local success, jsonData = pcall(cjson.decode, raw_body_data) 
                   if success then
                       body_data = jsonData
@@ -121,6 +140,12 @@ function _M.log()
           local obfuscated_body_data = obfuscate_parameters(body_data)
           body_info = cjson.encode(obfuscated_body_data)
       end
+
+      local cookie_data
+      local cookies = request_headers['cookie']
+      if cookies then 
+         cookie_data = obfuscate_cookies(cookies)
+      end
                
       local request_info = {
           hostname = ngx.var.http_host,
@@ -131,6 +156,7 @@ function _M.log()
           req_content_type = req_content_type,
           body_data = body_info,
           headers = obfuscate_headers(request_headers),
+          cookie_data = cookie_data,
       }
 
 
