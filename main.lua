@@ -5,7 +5,7 @@ local _M = {}
 
 function _M.header_filter()
 
-   ngx.header["X-My-Header"] =  "1"
+   ngx.header["X-My-Header"] =  "2"
 
 end
 
