@@ -17,11 +17,11 @@ local accepted_response_content_types = {
 }
 
 local ignore_headers = {
-   ["host"]                = false,
-   ["cookie"]              = false,
-   ["user-agent"]          = false,
-   ["content-type"]        = false,
-   ["content-lenght"]      = false,
+   ["host"]                = true,
+   ["cookie"]              = true,
+   ["user-agent"]          = true,
+   ["content-type"]        = true,
+   ["content-lenght"]      = true,
 }
 
 local _M = {}
@@ -54,7 +54,6 @@ end
 local function obfuscate_headers(params)
    local final_headers = {}
    for key, content in pairs(params) do 
-      ngx.log(ngx.ERR, "Add is: "..cjson.encode(key).." - "..cjson.encode(content))
       if not ignore_headers[key] then
          if type(content) == 'table' then 
             for __, ___ in pairs(content) do 
@@ -111,7 +110,6 @@ function _M.log()
          end
       end
    end
-   ngx.log(ngx.ERR, "Add is: "..cjson.encode(add))
 
    if add then
       local request_headers = ngx.req.get_headers()
