@@ -13,9 +13,32 @@ local accepted_response_content_types = {
             "application/json",
             "application/xml",
             "text/xml"
-        }
+}
 
+local ignore_headers = {
+   "cookie",
+   "content-length",
+   "content-type",
+   "date",
+   "server",
+}
 local _M = {}
+
+local function obfuscate_headers(params)
+   local final_headers = {}
+   for key, content in pairs(params) do 
+      if not ignore_headers[key] then
+         if type(content) == 'table' then 
+            for __, ___ in pairs(content) do 
+               final_headers[#final_headers+1] = key
+            end
+         else 
+            final_headers[#final_headers+1] = key
+         end
+      end
+   end
+   return final_headers
+end
 
 local function obfuscate_parameters(params)
 
@@ -48,8 +71,8 @@ end
 
 function _M.log()
 
-
-   local res_content_type = ngx.resp.get_headers()["content_type"]
+   local response_headers = ngx.resp.get_headers()
+   local res_content_type = response_headers["content_type"]
 
    local add = false
    if tonumber(ngx.var.status) == 200 and res_content_type ~= nil then
@@ -71,17 +94,19 @@ function _M.log()
           if req_content_type:match(ct) then
               local raw_body_data = ngx.req.get_body_data()
               if raw_body_data ~= nil and #raw_body_data < inventory_max_body_size then
+
+                  ngx.log(ngx.ERR, "RAW BODY: "..cjson.encode(raw_body_data))
+
                   local success, jsonData = pcall(cjson.decode, raw_body_data) 
                   if success then
                       body_data = jsonData
                   else
                       body_data = ngx.req.get_post_args()
                   end
+                  break
               end
           end
       end
-
-      local body_info
 
       if body_data ~= nil then
           local obfuscated_body_data = obfuscate_parameters(body_data)
@@ -89,13 +114,14 @@ function _M.log()
       end
                
       local request_info = {
-          userid = userid,
           hostname = ngx.var.http_host,
           uri = ngx.var.request_uri,
+          status = ngx.status,
           method = ngx.var.request_method,
           res_content_type = res_content_type,
           req_content_type = req_content_type,
-          body_data = body_info
+          body_data = body_info,
+          headers = obfuscate_headers(request_headers),
       }
 
 
