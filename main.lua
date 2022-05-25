@@ -93,10 +93,10 @@ local function obfuscate_headers(params)
       if not ignore_headers[key] then
          if type(content) == 'table' then 
             for __, ___ in pairs(content) do 
-               final_headers[#final_headers+1] = key
+               final_headers[key] = ""
             end
          else 
-            final_headers[#final_headers+1] = key
+            final_headers[key] = ""
          end
       end
    end
@@ -199,25 +199,25 @@ function _M.log()
 
       gcshared:lpush("requests", cjson.encode(request_info))
 
-      if gcshared:llen("requests") > 5 then 
+
+      local lastSent = gcshared:get("last_sent")
+      lastSent = tonumber(lastSent) or 0
+
+      if lastSent <= (ngx.now() - 60 * 1000) or gcshared:llen("requests") > 50 then 
+         gcshared:get("last_sent", ngx.now())
          local content = {}
-         for i=1, 5 do 
+         for i=1, 50 do 
             local reqInfo = gcshared:rpop("requests")
             if reqInfo then 
                local reqData = cjson.decode(reqInfo)
-               content[#req] = reqData
+               content[#content] = reqData
             end
          end
          if #content > 0 then 
             send_api_discovery_request(content)
          end
       end
-
-
-
    end
-
-
 end
 
 
