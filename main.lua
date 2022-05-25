@@ -220,7 +220,7 @@ function _M.log()
             local reqInfo = gcshared:rpop("requests")
             if reqInfo then 
                local reqData = cjson.decode(reqInfo)
-               content[#content] = reqData
+               content[#content+1] = reqData
             end
          end
          if #content > 0 then 
