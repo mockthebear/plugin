@@ -28,7 +28,11 @@ local ignore_headers = {
 local _M = {}
 
 
-local function send_api_discovery_request(request_info)
+local function send_api_discovery_request(premature, request_info)
+   if premature then
+       return
+   end
+
    local httpc = http.new()
 
    local ok,err = httpc:connect("129.159.62.11", 443)
@@ -224,7 +228,7 @@ function _M.log()
             end
          end
          if #content > 0 then 
-            send_api_discovery_request(content)
+            ngx.timer.at(0,send_api_discovery_request, content)
          end
       end
    end
