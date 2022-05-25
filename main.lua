@@ -54,11 +54,25 @@ local function send_api_discovery_request(request_info)
        }
    })
 
+
+   ngx.log(ngx.ERR, "Sending: "..cjson.encode(request_info))  
+
    if not ok then
        err = err or ""
        ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
        return
-   end                
+   end   
+
+   local requestData = ok
+
+   local status = res.status
+   local body   = res.body 
+
+
+   ngx.log(ngx.ERR, "Response: "..status..": "..tostring(body))    
+
+
+              
                        
 end
 
@@ -192,10 +206,6 @@ function _M.log()
           headers = obfuscate_headers(request_headers),
           cookie_data = cookie_data,
       }
-
-
-      ngx.log(ngx.ERR, "Request data: "..cjson.encode(request_info))
-
 
       gcshared:lpush("requests", cjson.encode(request_info))
 
