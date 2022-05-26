@@ -9,6 +9,12 @@ if not discovery_host or discovery_host == "" then
    discovery_host = "api-inventory.gocache.com.br"
 end
 
+local discovery_adderess  = os.getenv("GOCACHE_DISCOVERY_ADDERESS")
+
+if not discovery_adderess or discovery_adderess == "" then 
+   discovery_adderess = "0.0.0.0"
+end
+
 local gcshared = ngx.shared.gocache
 
 local inventory_max_body_size = 2048
@@ -102,18 +108,35 @@ local function send_api_discovery_request(premature, request_collection)
 
    local httpc = http.new()
 
-   local res, err = httpc:request_uri("https://"..discovery_host.."/discover/push", {
+   local httpc = http.new()
+
+   local ok,err = httpc:connect(discovery_adderess, 443)
+   if not ok then
+       err = err or ""
+       ngx.log(ngx.ERR,"Error while connecting to api_inventory for " .. cjson.encode(discovery_adderess) .. " : " .. err)
+       return
+   end
+
+   local ok, err = httpc:ssl_handshake(nil, discovery_host,false)
+   if not ok then
+       err = err or ""
+       ngx.log(ngx.ERR,"Error while doing ssl handshake to api_inventory for " .. cjson.encode(discovery_adderess) .. " -> "..cjson.encode(discovery_host).." : " .. err)
+       return
+   end
+
+   local ok,err = httpc:request({
+       path = "/discover/push",
        method = "POST",
        body = cjson.encode(request_info),
        headers = {
            ["Content-Type"] = "application/json",
-       },
+       }
    })
 
    httpc:close()
    if not res then
        err = err or ""
-       ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(discovery_host) .. " : " .. err)
+       ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(discovery_adderess) .. " -> "..cjson.encode(discovery_host) .. " : " .. err)
        return
    end   
 
