@@ -1,6 +1,14 @@
 local cjson = require("cjson")
 local http = require("resty.http")
 local ngx = ngx
+
+local token = os.getenv("GOCACHE_DISCOVERY_TOKEN")
+local discovery_host  = os.getenv("GOCACHE_DISCOVERY_HOSTNAME")
+
+if not discovery_host or discovery_host == "" then 
+   discovery_host = "api-inventory.gocache.com.br"
+end
+
 local gcshared = ngx.shared.gocache
 
 local inventory_max_body_size = 2048
@@ -12,72 +20,100 @@ local accepted_request_content_types = {
 }
 
 local accepted_response_content_types = {
-            "application/json",
-            "application/xml",
-            "text/xml"
+   "application/json",
+   "application/xml",
+   "text/xml"
 }
 
 local ignore_headers = {
-   ["host"]                = true,
-   ["cookie"]              = true,
-   ["user-agent"]          = true,
-   ["content-type"]        = true,
-   ["content-lenght"]      = true,
+    ["a-im"]=true,
+    ["accept"]=true,
+    ["accept-charset"]=true,
+    ["accept-datetime"]=true,
+    ["accept-encoding"]=true,
+    ["accept-language"]=true,
+    ["access-control-request-method"]=true,
+    ["access-control-request-headers"]=true,
+    ["cache-control"]=true,
+    ["connection"]=true,
+    ["content-encoding"]=true,
+    ["content-length"]=true,
+    ["content-md5"]=true,
+    ["content-type"]=true,
+    ["cookie"]=true,
+    ["date"]=true,
+    ["expect"]=true,
+    ["forwarded"]=true,
+    ["from"]=true,
+    ["host"]=true,
+    ["http2-settings"]=true,
+    ["if-match"]=true,
+    ["if-modified-since"]=true,
+    ["if-none-match"]=true,
+    ["if-range"]=true,
+    ["if-unmodified-since"]=true,
+    ["max-forwards"]=true,
+    ["origin"]=true,
+    ["pragma"]=true,
+    ["prefer"]=true,
+    ["proxy-authorization"]=true,
+    ["range"]=true,
+    ["referer"]=true,
+    ["sec-fetch-dest"]=true,
+    ["sec-fetch-mode"]=true,
+    ["sec-fetch-site"]=true,
+    ["sec-fetch-user"]=true,
+    ["te"]=true,
+    ["trailer"]=true,
+    ["transfer-encoding"]=true,
+    ["user-agent"]=true,
+    ["upgrade"]=true,
+    ["via"]=true,
+    ["warning"]=true,
+    ["upgrade-insecure-requests"]=true,
+    ["x-requested-with"]=true,
+    ["dnt"]=true,
+    ["x-forwarded-for"]=true,
+    ["x-forwarded-host"]=true,
+    ["x-forwarded-proto"]=true,
+    ["front-end-https"]=true,
+    ["x-http-method-override"]=true,
+    ["x-att-deviceid"]=true,
+    ["x-wap-profile"]=true,
+    ["proxy-connection"]=true,
+    ["x-uidh"]=true,
+    ["x-csrf-token"]=true,
+    ["x-request-id"]=true,
+    ["x-correlation-id"]=true,
+    ["save-data"]=true,
 }
 
 local _M = {}
-
 
 local function send_api_discovery_request(premature, request_info)
    if premature then
        return
    end
 
+
    local httpc = http.new()
 
-   local ok,err = httpc:connect("129.159.62.11", 443)
-   if not ok then
-       err = err or ""
-       ngx.log(ngx.ERR,"Error while connecting to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
-       return
-   end
-
-   local ok, err = httpc:ssl_handshake(nil,"api-inventory.gocache.com.br",false)
-   if not ok then
-       err = err or ""
-       ngx.log(ngx.ERR,"Error while doing ssl handshake to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
-       return
-   end
-
-   local ok,err = httpc:request({
-       path = "/discover/push",
+   local res, err = httpc:request_uri("https://"..discovery_host.."/discover/push", {
        method = "POST",
        body = cjson.encode(request_info),
        headers = {
            ["Content-Type"] = "application/json",
-       }
+       },
    })
 
-
-   ngx.log(ngx.ERR, "Sending: "..cjson.encode(request_info))  
-
-   if not ok then
+   httpc:close()
+   if not res then
        err = err or ""
        ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
        return
    end   
 
-   local requestData = ok
-
-   local status = res.status
-   local body   = res.body 
-
-
-   ngx.log(ngx.ERR, "Response: "..status..": "..tostring(body))    
-
-
-              
-                       
+   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery")                     
 end
 
 local function collect_cookie(collector, content)
@@ -200,35 +236,36 @@ function _M.log()
       end
                
       local request_info = {
-          hostname = ngx.var.http_host,
-          uri = ngx.var.request_uri,
-          status = ngx.status,
-          method = ngx.var.request_method,
-          res_content_type = res_content_type,
-          req_content_type = req_content_type,
-          body_data = body_info,
-          headers = obfuscate_headers(request_headers),
-          cookie_data = cookie_data,
+         token = token,
+         hostname = ngx.var.http_host,
+         uri = ngx.var.request_uri,
+         status = ngx.status,
+         method = ngx.var.request_method,
+         res_content_type = res_content_type,
+         req_content_type = req_content_type,
+         body_data = body_info,
+         headers = obfuscate_headers(request_headers),
+         cookie_data = cookie_data,
       }
 
       gcshared:lpush("requests", cjson.encode(request_info))
 
 
-      local lastSent = gcshared:get("last_sent")
-      lastSent = tonumber(lastSent) or 0
+      local last_sent = gcshared:get("last_sent")
+      last_sent = tonumber(last_sent) or 0
 
-      if lastSent <= (ngx.now() - 60 * 1000) or gcshared:llen("requests") > 50 then 
-         gcshared:get("last_sent", ngx.now())
+      if last_sent <= ngx.now() or gcshared:llen("requests") >= 50 then 
+         gcshared:get("last_sent", ngx.now()+60)
          local content = {}
          for i=1, 50 do 
-            local reqInfo = gcshared:rpop("requests")
-            if reqInfo then 
-               local reqData = cjson.decode(reqInfo)
-               content[#content+1] = reqData
+            local req_info = gcshared:rpop("requests")
+            if req_info then 
+               local req_data = cjson.decode(req_info)
+               content[#content+1] = req_data
             end
          end
          if #content > 0 then 
-            ngx.timer.at(0,send_api_discovery_request, content)
+            ngx.timer.at(1, send_api_discovery_request, content)
          end
       end
    end
