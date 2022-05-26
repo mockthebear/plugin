@@ -138,11 +138,11 @@ local function send_api_discovery_request(premature, request_collection)
        return
    end   
 
-   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery: "..res.status) 
+   ngx.log(ngx.ERR, "Status code from sending "..(#request_info).." requests for discovery: "..res.status) 
 
 
 
-   ngx.log(ngx.INFO, "Sent: "..cjson.encode(request_info))                    
+   ngx.log(ngx.ERR, "Sent: "..cjson.encode(request_info))                    
 end
 
 local function collect_cookie(collector, content)
@@ -294,7 +294,7 @@ function _M.log()
             end
          end
          if #content > 0 then 
-             ngx.log(ngx.INFO, "bolo: "..cjson.encode(ngx.var.bolo))  
+             ngx.log(ngx.ERR, "bolo: "..cjson.encode(ngx.var.bolo))  
             ngx.timer.at(1, send_api_discovery_request, content)
          end
       end
