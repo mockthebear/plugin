@@ -90,11 +90,15 @@ local ignore_headers = {
 
 local _M = {}
 
-local function send_api_discovery_request(premature, request_info)
+local function send_api_discovery_request(premature, request_collection)
    if premature then
        return
    end
 
+   local request_info = {
+      token = token,
+      requests = request_collection,
+   }
 
    local httpc = http.new()
 
@@ -109,11 +113,11 @@ local function send_api_discovery_request(premature, request_info)
    httpc:close()
    if not res then
        err = err or ""
-       ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(request_info.hostname) .. " : " .. err)
+       ngx.log(ngx.ERR,"Error while sending request to api_inventory for " .. cjson.encode(discovery_host) .. " : " .. err)
        return
    end   
 
-   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery")                     
+   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery: "..res.status)                     
 end
 
 local function collect_cookie(collector, content)
@@ -236,7 +240,6 @@ function _M.log()
       end
                
       local request_info = {
-         token = token,
          hostname = ngx.var.http_host,
          uri = ngx.var.request_uri,
          status = ngx.status,
@@ -244,7 +247,7 @@ function _M.log()
          res_content_type = res_content_type,
          req_content_type = req_content_type,
          body_data = body_info,
-         headers = obfuscate_headers(request_headers),
+         header_data = obfuscate_headers(request_headers),
          cookie_data = cookie_data,
       }
 
