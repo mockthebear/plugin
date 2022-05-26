@@ -255,6 +255,9 @@ function _M.log()
       last_sent = tonumber(last_sent) or 0
 
       if last_sent <= ngx.now() or gcshared:llen("requests") >= 50 then 
+         
+         ngx.log(ngx.ERR,"DIFF: " .. tostring(last_sent)..' - '.. ngx.now().." = "..(last_sent-ngx.now())..' ~ '.. tostring(gcshared:get("last_sent")))
+
          gcshared:get("last_sent", ngx.now()+60)
          local content = {}
          for i=1, 50 do 
@@ -265,6 +268,9 @@ function _M.log()
             end
          end
          if #content > 0 then 
+
+            ngx.log(ngx.ERR,"Disparando " .. cjson.encode(content))
+
             ngx.timer.at(1, send_api_discovery_request, content)
          end
       end
