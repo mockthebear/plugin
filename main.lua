@@ -141,6 +141,7 @@ local function send_api_discovery_request(premature, request_collection)
    ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery: "..res.status) 
 
 
+   ngx.log(ngx.INFO, "bolo: "..cjson.encode(ngx.var.bolo))                    
    ngx.log(ngx.INFO, "Sent: "..cjson.encode(request_info))                    
 end
 
