@@ -108,8 +108,6 @@ local function send_api_discovery_request(premature, request_collection)
 
    local httpc = http.new()
 
-   local httpc = http.new()
-
    local ok,err = httpc:connect(discovery_adderess, 443)
    if not ok then
        err = err or ""
@@ -124,7 +122,7 @@ local function send_api_discovery_request(premature, request_collection)
        return
    end
 
-   local ok,err = httpc:request({
+   local res,err = httpc:request({
        path = "/discover/push",
        method = "POST",
        body = cjson.encode(request_info),
@@ -140,7 +138,10 @@ local function send_api_discovery_request(premature, request_collection)
        return
    end   
 
-   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery: "..res.status)                     
+   ngx.log(ngx.INFO, "Status code from sending "..(#request_info).." requests for discovery: "..res.status) 
+
+
+   ngx.log(ngx.INFO, "Sent: "..cjson.encode(request_info))                    
 end
 
 local function collect_cookie(collector, content)
@@ -292,9 +293,6 @@ function _M.log()
             end
          end
          if #content > 0 then 
-
-            ngx.log(ngx.ERR,"Disparando " .. cjson.encode(content))
-
             ngx.timer.at(1, send_api_discovery_request, content)
          end
       end
