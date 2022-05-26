@@ -259,9 +259,7 @@ function _M.log()
 
       if last_sent <= ngx.now() or gcshared:llen("requests") >= 50 then 
          
-         ngx.log(ngx.ERR,"DIFF: " .. tostring(last_sent)..' - '.. ngx.now().." = "..(last_sent-ngx.now())..' ~ '.. tostring(gcshared:get("last_sent")))
-
-         gcshared:get("last_sent", ngx.now()+60)
+         gcshared:set("last_sent", ngx.now()+60)
          local content = {}
          for i=1, 50 do 
             local req_info = gcshared:rpop("requests")
