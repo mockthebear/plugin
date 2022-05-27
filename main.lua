@@ -275,6 +275,9 @@ function _M.log()
       gcshared:lpush("requests", cjson.encode(request_info))
 
 
+
+      ngx.log(ngx.ERR, "Our data means: "..tostring(os.getenv("GOCACHE_DISCOVERY_TOKEN")))   
+
       local last_sent = gcshared:get("last_sent")
       last_sent = tonumber(last_sent) or 0
 
