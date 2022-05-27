@@ -276,7 +276,7 @@ function _M.log()
 
 
 
-      ngx.log(ngx.ERR, "Our data means: "..tostring(os.getenv("GOCACHE_DISCOVERY_TOKEN")))   
+      ngx.log(ngx.ERR, "Our data means: "..tostring(os.getenv("GOCACHE_DISCOVERY_TOKEN"))..'-'..tostring(os.getenv("GOCACHE_DISCOVERY_HOSTNAME")))   
 
       local last_sent = gcshared:get("last_sent")
       last_sent = tonumber(last_sent) or 0
